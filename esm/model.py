@@ -115,8 +115,10 @@ class ProteinBertModel(nn.Module):
         if return_contacts:
             need_head_weights = True
 
-        assert tokens.ndim == 2
-        padding_mask = tokens.eq(self.padding_idx) # B, T
+        #CHANGED
+        #assert tokens.ndim == 2
+        #padding_mask = tokens.eq(self.padding_idx) # B, T
+        padding_mask = None
 
         x = self.embed_scale * self.embed_tokens(tokens)
 
@@ -128,7 +130,9 @@ class ProteinBertModel(nn.Module):
             mask_ratio_observed = (tokens == self.mask_idx).sum(-1).float() / src_lengths
             x = x * (1 - mask_ratio_train) / (1 - mask_ratio_observed)[:, None, None]
 
-        x = x + self.embed_positions(tokens)
+        #CHANGED
+        #replace tokens with a zero torch array of the right shape
+        x = x + self.embed_positions(torch.zeros(*x.shape[:-1]))
 
         if self.model_version == 'ESM-1b':
             x = self.emb_layer_norm_before(x)
@@ -146,8 +150,9 @@ class ProteinBertModel(nn.Module):
         # (B, T, E) => (T, B, E)
         x = x.transpose(0, 1)
 
-        if not padding_mask.any():
-            padding_mask = None
+        #CHANGED --> one sequence at a type, no padding
+        #if not padding_mask.any():
+        #    padding_mask = None
 
         for layer_idx, layer in enumerate(self.layers):
             x, attn = layer(x, self_attn_padding_mask=padding_mask, need_head_weights=need_head_weights)
